@@ -67,34 +67,31 @@ pub fn DisjointSet(comptime T: type) type {
 }
 
 test {
-    const gpa = std.testing.allocator;
-
     const Node = struct {
         i: usize,
 
         const Self = @This();
+
+        fn init(i: usize) Self {
+            return .{
+                .i = i,
+            };
+        }
 
         fn index(self: Self) usize {
             return self.i;
         }
     };
 
-    const n = struct {
-        fn n(i: usize) Node {
-            return .{ .i = i };
-        }
-    };
-
+    const gpa = std.testing.allocator;
     var ds = try DisjointSet(Node).init(gpa, 4);
     defer ds.deinit(gpa);
 
-    try std.testing.expectEqual(@as(usize, 0), ds.find(n.n(0)));
-
-    try std.testing.expectEqual(DisjointSet(Node).UnionOutcome.now_joined, ds.@"union"(n.n(0), n.n(1)));
-    try std.testing.expectEqual(@as(usize, 1), ds.find(n.n(1)));
-    try std.testing.expectEqual(@as(usize, 1), ds.find(n.n(0)));
-
-    try std.testing.expectEqual(DisjointSet(Node).UnionOutcome.now_joined, ds.@"union"(n.n(1), n.n(2)));
-    try std.testing.expectEqual(DisjointSet(Node).UnionOutcome.same_root, ds.@"union"(n.n(0), n.n(2)));
-    try std.testing.expectEqual(@as(usize, 1), ds.find(n.n(2)));
+    try std.testing.expectEqual(@as(usize, 0), ds.find(.init(0)));
+    try std.testing.expectEqual(.now_joined, ds.@"union"(.init(0), .init(1)));
+    try std.testing.expectEqual(@as(usize, 1), ds.find(.init(1)));
+    try std.testing.expectEqual(@as(usize, 1), ds.find(.init(0)));
+    try std.testing.expectEqual(.now_joined, ds.@"union"(.init(1), .init(2)));
+    try std.testing.expectEqual(.same_root, ds.@"union"(.init(0), .init(2)));
+    try std.testing.expectEqual(@as(usize, 1), ds.find(.init(2)));
 }
