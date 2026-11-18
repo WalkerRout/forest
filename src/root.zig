@@ -5,7 +5,7 @@ pub fn DisjointSet(comptime T: type) type {
     return struct {
         // roots are negative, magnitude represents tree size
         // otherwise positive, magnitude represents index of parent
-        parents: std.ArrayList(isize),
+        parents: []isize,
 
         const Self = @This();
 
@@ -13,15 +13,16 @@ pub fn DisjointSet(comptime T: type) type {
             // assert n < 2^63, we use sign bit to distinguish roots
             _ = std.math.cast(isize, n) orelse return error.Overflow;
             var parents: std.ArrayList(isize) = .empty;
+            errdefer parents.deinit(gpa);
             // n singleton sets
             try parents.appendNTimes(gpa, -1, n);
             return .{
-                .parents = parents,
+                .parents = try parents.toOwnedSlice(gpa),
             };
         }
 
         pub fn deinit(self: *Self, gpa: std.mem.Allocator) void {
-            self.parents.deinit(gpa);
+            gpa.free(self.parents);
         }
 
         pub fn find(self: *Self, a: T) usize {
@@ -29,11 +30,11 @@ pub fn DisjointSet(comptime T: type) type {
         }
 
         fn findIndex(self: *Self, index: usize) usize {
-            if (self.parents.items[index] < 0) {
+            if (self.parents[index] < 0) {
                 return index;
             } else {
-                const root = self.findIndex(@intCast(self.parents.items[index]));
-                self.parents.items[index] = @intCast(root);
+                const root = self.findIndex(@intCast(self.parents[index]));
+                self.parents[index] = @intCast(root);
                 return root;
             }
         }
@@ -49,17 +50,17 @@ pub fn DisjointSet(comptime T: type) type {
             if (a_root == b_root) {
                 return .same_root;
             }
-            const a_size = self.parents.items[a_root];
-            const b_size = self.parents.items[b_root];
+            const a_size = self.parents[a_root];
+            const b_size = self.parents[b_root];
             // is a bigger than b?
             if (a_size < b_size) {
                 // yes, a is a bigger tree than b
-                self.parents.items[b_root] = @intCast(a_root);
-                self.parents.items[a_root] += b_size;
+                self.parents[b_root] = @intCast(a_root);
+                self.parents[a_root] += b_size;
             } else {
                 // no, a is smaller than b
-                self.parents.items[a_root] = @intCast(b_root);
-                self.parents.items[b_root] += a_size;
+                self.parents[a_root] = @intCast(b_root);
+                self.parents[b_root] += a_size;
             }
             return .now_joined;
         }
